@@ -92,18 +92,36 @@ def register():
 def manager():
     return render_template('manager.html')
 
-@app.route("/delete_account", methods=['GET'])
+@app.route("/delete_account", methods=['GET', 'POST'])
 @login_required
 def detete_account():
-    user_ref = ref.child("user_info").child(str(user.get_id()))
-    user_ref.delete()
-    user.id = ''
-    logout_user()
-    return redirect('/')
+    if request.method == 'POST':
+        password = request.form['password']
+        current_hash_password = hashlib.sha256(password.encode()).hexdigest()
+        otpcode = request.form['otpcode']
+        user_ref = ref.child("user_info").child(str(user.get_id()))
+        user_info = user_ref.get()
+        hash_password = user_info['password']
+        encode_otp_key = user_info['otp_key']
+        if current_hash_password == hash_password:
+            otp_key = jwts.decode(
+                encode_otp_key, password, algorithms='HS512')['otp_key']
+            totp = pyotp.TOTP(otp_key)
+            verify = totp.verify(otpcode)
+            if verify:
+                user_ref.delete()
+                user.id = ''
+                logout_user()
+                return redirect('/')
+            else:
+                return render_template('delete_account.html', error='OTP verify error.')
+        else:
+            return render_template('delete_account.html', error='Password verify error.')
+    return render_template('delete_account.html')
 
 @app.route("/", methods=['GET', 'POST'])
 def main():
-    
+
     if user.get_id() != '':
         return redirect('/manager')
 
@@ -131,9 +149,9 @@ def main():
                     login_user(user)
                     return redirect('/manager')
                 else:
-                    return render_template('index.html', error='Login Fail... OTP Verify Error.')
+                    return render_template('index.html', error='Login Fail... OTP verify error.')
             else:
-                return render_template('index.html', error='Login Fail... User is not Exist.')
+                return render_template('index.html', error='Login Fail... Password verify error.')
     return render_template('index.html')
 
 @login.unauthorized_handler
