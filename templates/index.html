@@ -1,0 +1,22 @@
+<html>
+    <head>
+        <title>
+            Honeypot Login
+        </title>
+    </head>
+    <body style="text-align:center;">
+        <h1>Honeypot Manager Login</h1>
+        <form method="post">
+            UserName: <input name="username" type="text" required>
+            <br><br>
+            Password: <input name="password" type="password" required>
+            <br><br>
+            OTP Code: <input name="otpcode" type="number" required>
+            <br><br>
+            <input name="login_bt" type="submit" value="Login">
+        </form>
+        <span>{{ error }}</span>
+        <br><br>
+        <a href="/register">Register Account</a>
+    </body>
+</html>

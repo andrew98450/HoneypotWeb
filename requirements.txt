@@ -1,0 +1,7 @@
+flask
+flask-login
+Flask-QRcode
+pyotp
+PyJWT
+werkzeug==2.1.2
+firebase-admin

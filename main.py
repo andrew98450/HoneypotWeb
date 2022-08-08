@@ -1,0 +1,143 @@
+
+import pyotp
+import firebase_admin
+import jwt
+import random
+import base64
+import hashlib
+from flask import *
+from flask_login import *
+from flask_qrcode import *
+from firebase_admin import credentials
+from firebase_admin import db
+
+cred_file = 'honeypot.json'
+cred = credentials.Certificate(cred_file)
+firebase_admin.initialize_app(cred, {'databaseURL' : 'https://honeypot-349512-default-rtdb.firebaseio.com/'})
+ref = db.reference('/')
+app = Flask(__name__)
+app.config['SECRET_KEY'] = base64.b64encode(str(random.randint(1, 10000)).encode())
+login = LoginManager(app)
+login.login_view = 'login'
+qrcode = QRcode(app)
+user = UserMixin()
+user.id = ''
+jwts = jwt.PyJWT()
+
+@login.user_loader
+def user_loader(username):
+    user_ref = ref.child("user_info")
+    user_info = user_ref.get()
+    if user_info is not None:
+        if username not in user_info.keys():
+            return
+
+        user = UserMixin()
+        user.id = username
+        return user
+    else: 
+        return
+
+
+@app.route("/logout", methods=['GET', 'POST'])
+@login_required
+def logout():
+    user.id = ''
+    logout_user()
+    return redirect('/')
+
+@app.route("/get_sysinfo", methods=['GET'])
+@login_required
+def get_sysinfo():
+    info_ref = ref.child('info')
+    info_data = info_ref.get()
+
+@app.route("/api", methods=['GET', 'POST'])
+@login_required
+def api():
+    return
+
+@app.route("/blacklist", methods=['GET', 'POST'])
+@login_required
+def blacklist():
+    return
+
+@app.route("/register", methods=['GET', 'POST'])
+def register():
+    random_key = pyotp.random_base32()
+    totp = pyotp.TOTP(random_key)
+    qr_url = totp.provisioning_uri(issuer_name='HoneypotWeb')
+
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        otpcode = request.form['otpcode']
+        otp_key = request.form['otpkey']
+
+        totp = pyotp.TOTP(otp_key)
+        hash_password = hashlib.sha256(password.encode()).hexdigest()
+        user_ref = ref.child("user_info").child(str(username))
+        info = {"otp_key": str(otp_key)}
+        encode_otp_key = jwts.encode(info, password, algorithm='HS512')
+        if totp.verify(otpcode):
+            user_ref.update({
+                "password": hash_password,
+                "otp_key": encode_otp_key})
+            return redirect('/')
+        
+    return render_template('register.html', keys=random_key, qr_url=qr_url)
+
+@app.route("/manager", methods=['GET'])
+@login_required
+def manager():
+    return render_template('manager.html')
+
+@app.route("/delete_account", methods=['GET'])
+@login_required
+def detete_account():
+    user_ref = ref.child("user_info").child(str(user.get_id()))
+    user_ref.delete()
+    user.id = ''
+    logout_user()
+    return redirect('/')
+
+@app.route("/", methods=['GET', 'POST'])
+def main():
+    
+    if user.get_id() != '':
+        return redirect('/manager')
+
+    if request.method == 'POST':
+        user_ref = ref.child("user_info")
+        user_info = user_ref.get()
+        username = request.form['username']
+        password = request.form['password']
+        current_hash_password = hashlib.sha256(password.encode()).hexdigest()
+        otpcode = request.form['otpcode']
+        if user_info is None:
+             return render_template('index.html', error='Login Fail... Database is not data.')
+        if username in user_info.keys():
+            hash_password = user_info[username]['password']
+            encode_otp_key = user_info[username]['otp_key']
+
+            if current_hash_password == hash_password:
+                otp_key = jwts.decode(
+                    encode_otp_key, password, algorithms='HS512')['otp_key']
+
+                totp = pyotp.TOTP(otp_key)
+                verify = totp.verify(otpcode)
+                if verify:
+                    user.id = username
+                    login_user(user)
+                    return redirect('/manager')
+                else:
+                    return render_template('index.html', error='Login Fail... OTP Verify Error.')
+            else:
+                return render_template('index.html', error='Login Fail... User is not Exist.')
+    return render_template('index.html')
+
+@login.unauthorized_handler
+def unauth():
+    return {"status": 400}
+
+app.run('0.0.0.0', port=4444, debug=True)
