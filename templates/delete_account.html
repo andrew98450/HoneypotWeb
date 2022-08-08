@@ -1,0 +1,20 @@
+<html>
+    <head>
+        <title>
+            Honeypot Delete Account
+        </title>
+    </head>
+    <body style="text-align:center;">
+        <h1>Honeypot Delete Account</h1>
+        <form method="post">
+            Password: <input name="password" type="password" required>
+            <br><br>
+            OTP Code: <input name="otpcode" type="number" required>
+            <br><br>
+            <input name="delete_bt" type="submit" value="Delete">
+        </form>
+        <span>{{ error }}</span>
+        <br><br>
+        <a href="/manager">Back Manager</a>
+    </body>
+</html>
