@@ -1,4 +1,4 @@
-
+import os
 import pyotp
 import firebase_admin
 import jwt
@@ -18,11 +18,12 @@ ref = db.reference('/')
 app = Flask(__name__)
 app.config['SECRET_KEY'] = base64.b64encode(str(random.randint(1, 10000)).encode())
 login = LoginManager(app)
-login.login_view = 'login'
 qrcode = QRcode(app)
 user = UserMixin()
-user.id = ''
 jwts = jwt.PyJWT()
+
+login.login_view = 'login'
+user.id = ''
 
 @login.user_loader
 def user_loader(username):
@@ -32,12 +33,10 @@ def user_loader(username):
         if username not in user_info.keys():
             return
 
-        user = UserMixin()
         user.id = username
         return user
     else: 
         return
-
 
 @app.route("/logout", methods=['GET', 'POST'])
 @login_required
@@ -64,6 +63,10 @@ def blacklist():
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
+
+    if user.get_id() != '':
+        return redirect('/manager')
+
     random_key = pyotp.random_base32()
     totp = pyotp.TOTP(random_key)
     qr_url = totp.provisioning_uri(issuer_name='HoneypotWeb')
@@ -133,7 +136,7 @@ def main():
         current_hash_password = hashlib.sha256(password.encode()).hexdigest()
         otpcode = request.form['otpcode']
         if user_info is None:
-             return render_template('index.html', error='Login Fail... Database is not data.')
+            return render_template('index.html', error='Login Fail... Database is not data.')
         if username in user_info.keys():
             hash_password = user_info[username]['password']
             encode_otp_key = user_info[username]['otp_key']
@@ -152,10 +155,12 @@ def main():
                     return render_template('index.html', error='Login Fail... OTP verify error.')
             else:
                 return render_template('index.html', error='Login Fail... Password verify error.')
+        else:
+            return render_template('index.html', error='Login Fail... Username is not exist.')
     return render_template('index.html')
 
 @login.unauthorized_handler
 def unauth():
-    return {"status": 400}
+    return render_template('unauth.html')
 
 app.run('0.0.0.0', port=4444, debug=True)
