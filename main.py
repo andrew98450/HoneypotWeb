@@ -61,6 +61,10 @@ def api():
 def blacklist():
     return
 
+@app.route("/api_enable", methods=["POST"])
+def api_enable():
+    pass
+
 @app.route("/register", methods=['GET', 'POST'])
 def register():
 
@@ -78,6 +82,7 @@ def register():
         otp_key = request.form['otpkey']
 
         totp = pyotp.TOTP(otp_key)
+        qr_url = totp.provisioning_uri(issuer_name='HoneypotWeb')
         hash_password = hashlib.sha256(password.encode()).hexdigest()
         user_ref = ref.child("user_info").child(str(username))
         info = {"otp_key": str(otp_key)}
@@ -87,6 +92,8 @@ def register():
                 "password": hash_password,
                 "otp_key": encode_otp_key})
             return redirect('/')
+        else:
+            return render_template('register.html', error='OTP verify error.', keys=otp_key, qr_url=qr_url)
         
     return render_template('register.html', keys=random_key, qr_url=qr_url)
 
@@ -163,5 +170,5 @@ def main():
 def unauth():
     return render_template('unauth.html')
 
-port = int(os.environ.get("PORT", 8080))
-app.run(host='0.0.0.0', port=port, debug=True)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)), debug=True)
