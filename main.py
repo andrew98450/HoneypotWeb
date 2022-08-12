@@ -173,7 +173,7 @@ def delete_blacklist(ip):
             return {"status": "Data is Empty."}
         if username in user_info.keys():
             if user_info[username]['has_token'] and token == user_info[username]['token']:
-                if ip not in blacklist_ref.get().keys():
+                if ip in blacklist_ref.get().keys():
                     blacklist_ref.child(ip).delete()
                     return {"status": "Success.", "delete_account": username}
                 else:
