@@ -34,7 +34,7 @@ def update_top_info():
         while True:
             turbo.push(
                 turbo.update(render_template("top_log.html", log=random.randint(1, 100)), "top_log"))
-            time.sleep(2)
+            time.sleep(5)
 
 @login.user_loader
 def user_loader(username):
@@ -216,7 +216,7 @@ def register():
                 "has_token" : False})
             return redirect('/')
         else:
-            return render_template('register.html', error='OTP verify error.', keys=otp_key, qr_url=qr_url)
+            return Response(render_template('register.html', error='OTP verify error.', keys=otp_key, qr_url=qr_url), 302)
         
     return render_template('register.html', keys=random_key, qr_url=qr_url)
 
@@ -250,9 +250,9 @@ def detete_account():
                 logout_user()
                 return redirect('/')
             else:
-                return render_template('delete_account.html', error='OTP verify error.')
+                return Response(render_template('delete_account.html', error='OTP verify error.'), 302)
         else:
-            return render_template('delete_account.html', error='Password verify error.')
+            return Response(render_template('delete_account.html', error='Password verify error.'), 302)
     return render_template('delete_account.html')
 
 @app.route("/", methods=['GET', 'POST'])
@@ -287,11 +287,11 @@ def main():
                     login_user(user)
                     return redirect('/manager')
                 else:
-                    return render_template('index.html', error='Login Fail... OTP verify error.')
+                    return Response(render_template('index.html', error='Login Fail... OTP verify error.'), 302)
             else:
-                return render_template('index.html', error='Login Fail... Password verify error.')
+                return  Response(render_template('index.html', error='Login Fail... Password verify error.'), 302)
         else:
-            return render_template('index.html', error='Login Fail... Username is not exist.')
+            return Response(render_template('index.html', error='Login Fail... Username is not exist.'), 302)
     return render_template('index.html')
 
 @login.unauthorized_handler
