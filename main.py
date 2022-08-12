@@ -88,13 +88,13 @@ def api():
                     user_ref.update({
                         "has_token": True,
                         "token": token})  
-                    return Response(render_template('api.html', has_token=True, token=token, message="REST API is enable."), status=302)      
+                    return Response(render_template('api.html', has_token=True, token=token, message="REST API has enable."), status=302)      
                 else:
                     token_ref = user_ref.child("token")
                     user_ref.update({
                         "has_token": False})
                     token_ref.delete()
-                    return Response(render_template('api.html', has_token=False, message="REST API is disable."), status=302)
+                    return Response(render_template('api.html', has_token=False, message="REST API has disable."), status=302)
             else:
                 if has_token:
                     token = user_info['token']
@@ -129,8 +129,8 @@ def add_blacklist(ip):
     if "token" not in request.form.keys() or 'password' not in request.form.keys():
         return {"status": "Please input field."}
 
-    token = request.form['token']
-    password = request.form['password']
+    token = request.headers['token']
+    password = request.headers['password']
 
     try:     
         token_data = jwts.decode(
@@ -162,8 +162,8 @@ def delete_blacklist(ip):
     if "token" not in request.form.keys() or 'password' not in request.form.keys():
         return {"status": "Please input field."}
 
-    token = request.form['token']
-    password = request.form['password']
+    token = request.headers['token']
+    password = request.headers['password']
     
     try:     
         token_data = jwts.decode(
@@ -191,6 +191,7 @@ def register():
 
     if user.get_id() != '':
         logout_user()
+        user.id = ''
         return redirect('/')
 
     random_key = pyotp.random_base32()
@@ -248,6 +249,7 @@ def detete_account():
             if verify:
                 user_ref.delete()
                 logout_user()
+                user.id = ''
                 return redirect('/')
             else:
                 return Response(render_template('delete_account.html', error='OTP verify error.'), 302)
@@ -260,6 +262,7 @@ def main():
 
     if user.get_id() != '': 
         logout_user()
+        user.id = ''
         return redirect('/')
 
     if request.method == 'POST':
