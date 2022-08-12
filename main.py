@@ -34,7 +34,7 @@ def update_top_info():
         while True:
             turbo.push(
                 turbo.update(render_template("top_log.html", log=random.randint(1, 100)), "top_log"))
-            time.sleep(5)
+            time.sleep(2)
 
 @login.user_loader
 def user_loader(username):
@@ -52,8 +52,8 @@ def user_loader(username):
 @app.route("/logout", methods=['GET', 'POST'])
 @login_required
 def logout():
-    user.id = ''
     logout_user()
+    user.id = ''
     return redirect('/')
 
 @app.route("/get_sysinfo", methods=['GET'])
