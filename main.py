@@ -140,8 +140,11 @@ def add_blacklist(ip):
             return {"status": "Data is Empty."}
         if username in user_info.keys():
             if user_info[username]['has_token'] and token == user_info[username]['token']:
-                blacklist_ref.child(ip).update({"add_account": username})
-                return {"status": "Ok", "add_account": username}
+                if ip not in blacklist_ref.get().keys():
+                    blacklist_ref.child(ip).update({"add_account": username})
+                    return {"status": "Success.", "add_account": username}
+                else:
+                    return {"status": "This IP has add blacklist."}
             else:
                 return {"status": "REST API not enable or token expired."}
         else:
@@ -170,11 +173,11 @@ def delete_blacklist(ip):
             return {"status": "Data is Empty."}
         if username in user_info.keys():
             if user_info[username]['has_token'] and token == user_info[username]['token']:
-                if ip in blacklist_ref.get().keys():
+                if ip not in blacklist_ref.get().keys():
                     blacklist_ref.child(ip).delete()
                     return {"status": "Success.", "delete_account": username}
                 else:
-                    return {"status": "Success.", "delete_account": username}
+                    return {"status": "This IP has delete blacklist."}
             else:
                 return {"status": "REST API not enable or token expired."}
         else:
@@ -187,7 +190,8 @@ def delete_blacklist(ip):
 def register():
 
     if user.get_id() != '':
-        return redirect('/manager')
+        logout_user()
+        return redirect('/')
 
     random_key = pyotp.random_base32()
     totp = pyotp.TOTP(random_key)
@@ -243,7 +247,6 @@ def detete_account():
             verify = totp.verify(otpcode)
             if verify:
                 user_ref.delete()
-                user.id = ''
                 logout_user()
                 return redirect('/')
             else:
@@ -255,8 +258,9 @@ def detete_account():
 @app.route("/", methods=['GET', 'POST'])
 def main():
 
-    if user.get_id() != '':
-        return redirect('/manager')
+    if user.get_id() != '': 
+        logout_user()
+        return redirect('/')
 
     if request.method == 'POST':
         user_ref = ref.child("user_info")
