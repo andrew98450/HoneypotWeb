@@ -1,8 +1,30 @@
 <html>
     <head>
-
+        <title>
+            Honeypot Web REST API
+        </title>
     </head>
-    <body>
-        
+    <body style="text-align:center;">
+        <h1> Honeypot Web REST API </h1>
+        <form method="post">
+            Password: <input name="password" type="password" required>
+            <br></br>
+            OTP Code: <input name="otpcode" type="number" required>
+            <br></br>
+            {% if has_token %}
+            <input name="bt" type="submit" value="Disable API">
+            <br></br>
+            {% else %}
+            <input name="bt" type="submit" value="Enable API">
+            <br></br>
+            {% endif %}
+        </form>
+        <span>
+            {% if has_token %}
+            API Token: <input type="text" value="{{ token }}" style="width: 500px;" readonly>
+            {% endif %}
+            <br><br>
+            {{ message }}
+        </span>
     </body>
 </html>
