@@ -126,7 +126,7 @@ def add_blacklist(ip):
     user_info = user_ref.get()
     ip = str(ip).replace('.', '-')
     
-    if "token" not in request.form.keys() or 'password' not in request.form.keys():
+    if "token" not in request.headers.keys() or 'password' not in request.headers.keys():
         return {"status": "Please input field."}
 
     token = request.headers['token']
@@ -159,7 +159,7 @@ def delete_blacklist(ip):
     user_info = user_ref.get()
     ip = str(ip).replace('.', '-')
 
-    if "token" not in request.form.keys() or 'password' not in request.form.keys():
+    if "token" not in request.headers.keys() or 'password' not in request.headers.keys():
         return {"status": "Please input field."}
 
     token = request.headers['token']
