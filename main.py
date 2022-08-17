@@ -237,7 +237,6 @@ def get_blacklist():
     blacklist_ref = ref.child("blacklist")
     blacklist_info = blacklist_ref.get()
     user_info = user_ref.get()
-    ip = str(ip).replace('.', '-')
 
     if 'token' not in request.form.keys() or 'password' not in request.form.keys():
         return {"status": "Please input field."}
