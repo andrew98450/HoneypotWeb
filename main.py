@@ -7,9 +7,6 @@ import hashlib
 import time
 from jwcrypto.jwt import JWT
 from jwcrypto.jwk import JWK
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP
-from Crypto.Hash import SHA256
 from Crypto.Util.Padding import pad
 from datetime import datetime
 from flask import *
@@ -89,22 +86,15 @@ def api():
             totp = pyotp.TOTP(otp_key)
             if totp.verify(otp_code):
                 if not has_token:
-                    key = RSA.generate(2048)
-                    private_key = key.export_key(format='PEM')
-                    public_key = key.public_key().export_key(format='PEM')
-                    load_key = RSA.import_key(public_key)
-                    rsa = PKCS1_OAEP.new(load_key, hashAlgo=SHA256.new())
-                    encrypt_data = base64.b64encode(rsa.encrypt(user.get_id().encode())).decode()
-                    private_key = base64.b64encode(private_key).decode()
-
                     key = JWK.from_password(pad(password.encode(), 32).decode())
                     info = {"iat": int(datetime.timestamp(datetime.now())),
-                        "data": encrypt_data,
-                        "private_key": private_key}
+                        "data": user.get_id()}
+
                     jwt = JWT(header={
                         "alg": "A256KW", "enc": "A256CBC-HS512"}, claims=info)
                     jwt.make_encrypted_token(key)
                     token = jwt.serialize()
+
                     user_ref.update({
                         "has_token": True,
                         "token": token})  
@@ -156,11 +146,7 @@ def add_blacklist(ip):
         key = JWK.from_password(pad(password.encode(), 32).decode())
         jwt = JWT()
         jwt.deserialize(token, key)
-        encrypt_data = base64.b64decode(json.loads(jwt.claims)['data'])
-        private_key = base64.b64decode(json.loads(jwt.claims)['private_key'])
-        load_key = RSA.import_key(private_key)
-        rsa = PKCS1_OAEP.new(load_key, hashAlgo=SHA256.new())
-        username = rsa.decrypt(encrypt_data).decode()
+        username = json.loads(jwt.claims)['data']
         
         if user_info is None:
             return {"status": "Data is Empty."}
@@ -202,11 +188,7 @@ def delete_blacklist(ip):
         key = JWK.from_password(pad(password.encode(), 32).decode())
         jwt = JWT()
         jwt.deserialize(token, key)
-        encrypt_data = base64.b64decode(json.loads(jwt.claims)['data'])
-        private_key = base64.b64decode(json.loads(jwt.claims)['private_key'])
-        load_key = RSA.import_key(private_key)
-        rsa = PKCS1_OAEP.new(load_key, hashAlgo=SHA256.new())
-        username = rsa.decrypt(encrypt_data).decode()
+        username = json.loads(jwt.claims)['data']
 
         if user_info is None:
             return {"status": "Data is Empty."}
@@ -248,11 +230,7 @@ def get_blacklist():
         key = JWK.from_password(pad(password.encode(), 32).decode())
         jwt = JWT()
         jwt.deserialize(token, key)
-        encrypt_data = base64.b64decode(json.loads(jwt.claims)['data'])
-        private_key = base64.b64decode(json.loads(jwt.claims)['private_key'])
-        load_key = RSA.import_key(private_key)
-        rsa = PKCS1_OAEP.new(load_key, hashAlgo=SHA256.new())
-        username = rsa.decrypt(encrypt_data).decode()
+        username = json.loads(jwt.claims)['data']
 
         if user_info is None:
             return {"status": "Data is Empty."}
