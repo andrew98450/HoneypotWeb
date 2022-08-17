@@ -1,10 +1,16 @@
 import os
 import pyotp
+import json
 import firebase_admin
-import jwt
 import random
 import hashlib
 import time
+from jwcrypto.jwt import JWT
+from jwcrypto.jwk import JWK
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Hash import SHA256
+from Crypto.Util.Padding import pad
 from datetime import datetime
 from flask import *
 from flask_login import *
@@ -24,7 +30,6 @@ login = LoginManager(app)
 turbo = Turbo(app)
 qrcode = QRcode(app)
 user = UserMixin()
-jwts = jwt.PyJWT()
 
 login.login_view = 'login'
 user.id = ''
@@ -69,44 +74,59 @@ def api():
     user_info = user_ref.get()
 
     has_token = user_info['has_token']
-
+    
     if request.method == 'POST':
         password = request.form['password']
         otp_code = request.form['otpcode']
         current_hash_password = hashlib.sha256(password.encode()).hexdigest()
         hash_password = user_info['password']
-        encode_otp_key = user_info['otp_key']
+        encrypt_otp_key = user_info['otp_key']
         if current_hash_password == hash_password:
-            otp_key = jwts.decode(
-                encode_otp_key, password, algorithms='HS512')['otp_key']
+            key = JWK.from_password(pad(password.encode(), 32).decode())
+            jwt = JWT()
+            jwt.deserialize(encrypt_otp_key, key)
+            otp_key = json.loads(jwt.claims)['otp_key']
             totp = pyotp.TOTP(otp_key)
             if totp.verify(otp_code):
                 if not has_token:
-                    token = jwts.encode({
-                        "timestamp": int(datetime.timestamp(datetime.now())),
-                        "username": user.get_id()}, password, algorithm='HS256')
+                    key = RSA.generate(2048)
+                    private_key = key.export_key(format='PEM')
+                    public_key = key.public_key().export_key(format='PEM')
+                    load_key = RSA.import_key(public_key)
+                    rsa = PKCS1_OAEP.new(load_key, hashAlgo=SHA256.new())
+                    encrypt_data = base64.b64encode(rsa.encrypt(user.get_id().encode())).decode()
+                    private_key = base64.b64encode(private_key).decode()
+
+                    key = JWK.from_password(pad(password.encode(), 32).decode())
+                    info = {"iat": int(datetime.timestamp(datetime.now())),
+                        "data": encrypt_data,
+                        "private_key": private_key}
+                    jwt = JWT(header={
+                        "alg": "A256KW", "enc": "A256CBC-HS512"}, claims=info)
+                    jwt.make_encrypted_token(key)
+                    token = jwt.serialize()
                     user_ref.update({
                         "has_token": True,
                         "token": token})  
-                    return Response(render_template('api.html', has_token=True, token=token, message="REST API has enable."), status=302)      
+                    return Response(render_template('api.html', has_token=True, token=token, message="REST API has enable."), 302)      
                 else:
                     token_ref = user_ref.child("token")
                     user_ref.update({
                         "has_token": False})
                     token_ref.delete()
-                    return Response(render_template('api.html', has_token=False, message="REST API has disable."), status=302)
+                    return Response(render_template('api.html', has_token=False, message="REST API has disable."), 302)
             else:
                 if has_token:
                     token = user_info['token']
-                    return Response(render_template('api.html', has_token=has_token, token=token, message="OTP verify error."), status=302)
+                    return Response(render_template('api.html', has_token=has_token, token=token, message="OTP verify error."), 302)
                 else:
-                    return Response(render_template('api.html', has_token=has_token, message="OTP verify error."), status=302)
+                    return Response(render_template('api.html', has_token=has_token, message="OTP verify error."), 302)
         else:
             if has_token:
                 token = user_info['token']
-                return Response(render_template('api.html', has_token=has_token, token=token, message="Password verify error."), status=302)
+                return Response(render_template('api.html', has_token=has_token, token=token, message="Password verify error."), 302)
             else:
-                return Response(render_template('api.html', has_token=has_token, message="Password verify error."), status=302)
+                return Response(render_template('api.html', has_token=has_token, message="Password verify error."), 302)
 
     if has_token:
         token = user_info['token']
@@ -126,31 +146,44 @@ def add_blacklist(ip):
     user_info = user_ref.get()
     ip = str(ip).replace('.', '-')
     
-    if "token" not in request.form.keys() or 'password' not in request.form.keys():
+    if 'token' not in request.form.keys() or 'password' not in request.form.keys():
         return {"status": "Please input field."}
 
-    token = request.form['token']
-    password = request.form['password']
+    token = str(request.form['token'])
+    password = str(request.form['password'])
 
-    try:     
-        token_data = jwts.decode(
-            token, password, algorithms='HS256')
-        username = token_data['username']
+    try:
+        key = JWK.from_password(pad(password.encode(), 32).decode())
+        jwt = JWT()
+        jwt.deserialize(token, key)
+        encrypt_data = base64.b64decode(json.loads(jwt.claims)['data'])
+        private_key = base64.b64decode(json.loads(jwt.claims)['private_key'])
+        load_key = RSA.import_key(private_key)
+        rsa = PKCS1_OAEP.new(load_key, hashAlgo=SHA256.new())
+        username = rsa.decrypt(encrypt_data).decode()
+        
         if user_info is None:
             return {"status": "Data is Empty."}
+
+        if not user_info[username]['has_token']:
+            return {"status": "REST API not enable."}
+
         if username in user_info.keys():
-            if user_info[username]['has_token'] and token == user_info[username]['token']:
+            if token == user_info[username]['token']:
+                if blacklist_ref.get() is None:
+                    blacklist_ref.child(ip).update({"add_account": username})
+                    return {"status": "Success or ip is not exist.", "add_account": username}
                 if ip not in blacklist_ref.get().keys():
                     blacklist_ref.child(ip).update({"add_account": username})
                     return {"status": "Success.", "add_account": username}
                 else:
                     return {"status": "This IP has add blacklist."}
             else:
-                return {"status": "REST API not enable or token expired."}
+                return {"status": "Token expired."}
         else:
             return {"status": "Username is not exist."}
     except:
-        return {"status": "Verify Error."}
+        return {"status": "API Key verify Error."}
 
 @app.route("/delete_blacklist/<ip>", methods=['POST'])
 def delete_blacklist(ip):
@@ -159,32 +192,87 @@ def delete_blacklist(ip):
     user_info = user_ref.get()
     ip = str(ip).replace('.', '-')
 
-    if "token" not in request.form.keys() or 'password' not in request.form.keys():
+    if 'token' not in request.form.keys() or 'password' not in request.form.keys():
         return {"status": "Please input field."}
 
-    token = request.form['token']
-    password = request.form['password']
-    
-    try:     
-        token_data = jwts.decode(
-            token, password, algorithms='HS256')
-        username = token_data['username']
+    token = str(request.form['token'])
+    password = str(request.form['password'])
+
+    try:
+        key = JWK.from_password(pad(password.encode(), 32).decode())
+        jwt = JWT()
+        jwt.deserialize(token, key)
+        encrypt_data = base64.b64decode(json.loads(jwt.claims)['data'])
+        private_key = base64.b64decode(json.loads(jwt.claims)['private_key'])
+        load_key = RSA.import_key(private_key)
+        rsa = PKCS1_OAEP.new(load_key, hashAlgo=SHA256.new())
+        username = rsa.decrypt(encrypt_data).decode()
+
         if user_info is None:
             return {"status": "Data is Empty."}
+
+        if not user_info[username]['has_token']:
+            return {"status": "REST API not enable."}
+    
         if username in user_info.keys():
-            if user_info[username]['has_token'] and token == user_info[username]['token']:
+            if token == user_info[username]['token']:
+                if blacklist_ref.get() is None:
+                    blacklist_ref.child(ip).delete()
+                    return {"status": "Success.", "delete_account": username}
                 if ip in blacklist_ref.get().keys():
                     blacklist_ref.child(ip).delete()
                     return {"status": "Success.", "delete_account": username}
                 else:
-                    return {"status": "This IP has delete blacklist."}
+                    return {"status": "This IP has delete blacklist or not exist."}
             else:
-                return {"status": "REST API not enable or token expired."}
+                return {"status": "Token expired."}
         else:
             return {"status": "Username is not exist."}
     except:
-        return {"status": "Verify Error."}
+        return {"status": "API Key verify Error."}
 
+@app.route("/get_blacklist", methods=['POST'])
+def get_blacklist():
+    user_ref = ref.child("user_info")
+    blacklist_ref = ref.child("blacklist")
+    blacklist_info = blacklist_ref.get()
+    user_info = user_ref.get()
+    ip = str(ip).replace('.', '-')
+
+    if 'token' not in request.form.keys() or 'password' not in request.form.keys():
+        return {"status": "Please input field."}
+
+    token = str(request.form['token'])
+    password = str(request.form['password'])
+
+    try:  
+        key = JWK.from_password(pad(password.encode(), 32).decode())
+        jwt = JWT()
+        jwt.deserialize(token, key)
+        encrypt_data = base64.b64decode(json.loads(jwt.claims)['data'])
+        private_key = base64.b64decode(json.loads(jwt.claims)['private_key'])
+        load_key = RSA.import_key(private_key)
+        rsa = PKCS1_OAEP.new(load_key, hashAlgo=SHA256.new())
+        username = rsa.decrypt(encrypt_data).decode()
+
+        if user_info is None:
+            return {"status": "Data is Empty."}
+        
+        if not user_info[username]['has_token']:
+            return {"status": "REST API not enable."}
+
+        if username in user_info.keys():
+            if token == user_info[username]['token']:
+                if blacklist_info is not None:
+                    return {"status": "Success.", "data": blacklist_info}
+                else:
+                    return {"status": "The blacklist is empty."}
+            else:
+                return {"status": "Token expired."}
+        else:
+            return {"status": "Username is not exist."}
+    except:
+        return {"status": "API Key verify Error."}
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
@@ -208,12 +296,17 @@ def register():
         qr_url = totp.provisioning_uri(issuer_name='HoneypotWeb')
         hash_password = hashlib.sha256(password.encode()).hexdigest()
         user_ref = ref.child("user_info").child(str(username))
-        info = {"otp_key": str(otp_key)}
-        encode_otp_key = jwts.encode(info, password, algorithm='HS512')
+        info = {"otp_key": otp_key}
+
+        key = JWK.from_password(pad(password.encode(), 32).decode())
+        jwt = JWT(header={"alg": "A256KW", "enc": "A256CBC-HS512"}, claims=info)
+        jwt.make_encrypted_token(key)
+        encrypt_otp_key = jwt.serialize()
+
         if totp.verify(otpcode):
             user_ref.update({
                 "password": hash_password,
-                "otp_key": encode_otp_key,
+                "otp_key": encrypt_otp_key,
                 "has_token" : False})
             return redirect('/')
         else:
@@ -240,10 +333,13 @@ def detete_account():
         otpcode = request.form['otpcode']
         
         hash_password = user_info['password']
-        encode_otp_key = user_info['otp_key']
+        encrypt_otp_key = user_info['otp_key']
+       
         if current_hash_password == hash_password:
-            otp_key = jwts.decode(
-                encode_otp_key, password, algorithms='HS512')['otp_key']
+            key = JWK.from_password(pad(password.encode(), 32).decode())
+            jwt = JWT()
+            jwt.deserialize(encrypt_otp_key, key)
+            otp_key = json.loads(jwt.claims)['otp_key']
             totp = pyotp.TOTP(otp_key)
             verify = totp.verify(otpcode)
             if verify:
@@ -273,16 +369,19 @@ def main():
         password = request.form['password']
         current_hash_password = hashlib.sha256(password.encode()).hexdigest()
         otpcode = request.form['otpcode']
+        
         if user_info is None:
             return render_template('index.html', error='Login Fail... Database is not data.')
         if username in user_info.keys():
+
             hash_password = user_info[username]['password']
-            encode_otp_key = user_info[username]['otp_key']
-
+            encrypt_otp_key = user_info[username]['otp_key']
+          
             if current_hash_password == hash_password:
-                otp_key = jwts.decode(
-                    encode_otp_key, password, algorithms='HS512')['otp_key']
-
+                key = JWK.from_password(pad(password.encode(), 32).decode())
+                jwt = JWT()
+                jwt.deserialize(encrypt_otp_key, key)
+                otp_key = json.loads(jwt.claims)['otp_key']
                 totp = pyotp.TOTP(otp_key)
                 verify = totp.verify(otpcode)
                 if verify:
