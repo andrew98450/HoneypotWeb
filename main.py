@@ -284,16 +284,23 @@ def register():
     random_key = pyotp.random_base32()
     totp = pyotp.TOTP(random_key)
     qr_url = totp.provisioning_uri(issuer_name='HoneypotWeb')
+    user_ref = ref.child("user_info")
+    user_info = user_ref.get()
 
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         otpcode = request.form['otpcode']
         otp_key = request.form['otpkey']
-
+      
         totp = pyotp.TOTP(otp_key)
         qr_url = totp.provisioning_uri(issuer_name='HoneypotWeb')
         hash_password = hashlib.sha256(password.encode()).hexdigest()
+
+        if user_info is not None:
+            if username in user_info.keys():
+                return Response(render_template('register.html', error='This username is exist.', keys=otp_key, qr_url=qr_url), 302)
+
         user_ref = ref.child("user_info").child(str(username))
         info = {"otp_key": otp_key}
 
