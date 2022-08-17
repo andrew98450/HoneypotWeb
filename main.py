@@ -172,7 +172,7 @@ def add_blacklist(ip):
             if token == user_info[username]['token']:
                 if blacklist_ref.get() is None:
                     blacklist_ref.child(ip).update({"add_account": username})
-                    return {"status": "Success or ip is not exist.", "add_account": username}
+                    return {"status": "Success.", "add_account": username}
                 if ip not in blacklist_ref.get().keys():
                     blacklist_ref.child(ip).update({"add_account": username})
                     return {"status": "Success.", "add_account": username}
@@ -218,7 +218,7 @@ def delete_blacklist(ip):
             if token == user_info[username]['token']:
                 if blacklist_ref.get() is None:
                     blacklist_ref.child(ip).delete()
-                    return {"status": "Success.", "delete_account": username}
+                    return {"status": "Success or ip address is not exist.", "delete_account": username}
                 if ip in blacklist_ref.get().keys():
                     blacklist_ref.child(ip).delete()
                     return {"status": "Success.", "delete_account": username}
