@@ -1,20 +1,20 @@
 <html>
     <head>
         <title>
-            Honeypot Delete Account
+            Honeypot Web Delete Account
         </title>
     </head>
     <body style="text-align:center;">
-        <h1>Honeypot Delete Account</h1>
+        <h1>Honeypot Web 刪除帳號</h1>
         <form method="post">
-            Password: <input name="password" type="password" required>
+            密碼: <input name="password" type="password" required>
             <br><br>
-            OTP Code: <input name="otpcode" type="number" required>
+            OTP碼: <input name="otpcode" type="number" required>
             <br><br>
-            <input name="delete_bt" type="submit" value="Delete">
+            <input name="delete_bt" type="submit" value="刪除帳號">
         </form>
         <span>{{ error }}</span>
         <br><br>
-        <a href="/manager">Back Manager</a>
+        <a href="/manager">返回管理頁面</a>
     </body>
 </html>

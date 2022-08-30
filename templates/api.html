@@ -5,17 +5,17 @@
         </title>
     </head>
     <body style="text-align:center;">
-        <h1> Honeypot Web REST API </h1>
+        <h1> Honeypot Web REST API 啟用/關閉 </h1>
         <form method="post">
-            Password: <input name="password" type="password" required>
+            密碼: <input name="password" type="password" required>
             <br></br>
-            OTP Code: <input name="otpcode" type="number" required>
+            OTP碼: <input name="otpcode" type="number" required>
             <br></br>
             {% if has_token %}
-            <input name="bt" type="submit" value="Disable API">
+            <input name="bt" type="submit" value="關閉 API">
             <br></br>
             {% else %}
-            <input name="bt" type="submit" value="Enable API">
+            <input name="bt" type="submit" value="啟用 API">
             <br></br>
             {% endif %}
         </form>
@@ -27,6 +27,6 @@
             {{ message }}
         </span>
         <br><br>
-        <a href="/manager">Back Manager</a>
+        <a href="/manager">返回管理頁面</a>
     </body>
 </html>

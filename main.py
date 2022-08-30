@@ -8,7 +8,6 @@ import time
 from jwcrypto.jwt import JWT
 from jwcrypto.jwk import JWK
 from Crypto.Util.Padding import pad
-from datetime import datetime
 from flask import *
 from flask_login import *
 from flask_qrcode import *
@@ -58,9 +57,14 @@ def logout():
     user.id = ''
     return redirect('/')
 
-@app.route("/get_sysinfo", methods=['GET'])
+@app.route("/event", methods=['GET'])
 @login_required
-def get_sysinfo():
+def event():
+    pass
+
+@app.route("/sysinfo", methods=['GET'])
+@login_required
+def sysinfo():
     info_ref = ref.child('info')
     info_data = info_ref.get()
 
@@ -87,7 +91,7 @@ def api():
             if totp.verify(otp_code):
                 if not has_token:
                     key = JWK.from_password(pad(password.encode(), 32).decode())
-                    info = {"iat": int(datetime.timestamp(datetime.now())),
+                    info = {"iat": int(time.time()),
                         "data": user.get_id()}
 
                     jwt = JWT(header={
@@ -375,7 +379,7 @@ def main():
                 else:
                     return Response(render_template('index.html', error='Login Fail... OTP verify error.'), 302)
             else:
-                return  Response(render_template('index.html', error='Login Fail... Password verify error.'), 302)
+                return Response(render_template('index.html', error='Login Fail... Password verify error.'), 302)
         else:
             return Response(render_template('index.html', error='Login Fail... Username is not exist.'), 302)
     return render_template('index.html')

@@ -6,21 +6,21 @@
      </head>
      <body style="text-align:center;">
         <form method="post">
-            <h1>Honeypot Manager Register</h1>
-            Username: <input name="username" type="text" required>
+            <h1>Honeypot Web 管理系統註冊</h1>
+            帳號: <input name="username" type="text" required>
             <br><br>
-            Password: <input name="password" type="password" required>
+            密碼: <input name="password" type="password" required>
             <br><br>
-            OTP Code: <input name="otpcode" type="number" required>
+            OTP碼: <input name="otpcode" type="number" required>
             <br><br>
-            OTP Key: <input name="otpkey" type="text" value="{{ keys }}", style="width: 400px;" readonly>
+            OTP金鑰: <input name="otpkey" type="text" value="{{ keys }}", style="width: 400px;" readonly>
             <br><br>
             <img src="{{ qrcode(qr_url) }}">
             <br><br>
-            <input name="button" type="submit" value="Register">
+            <input name="button" type="submit" value="註冊">
         </form>
         <span>{{ error }}</span>
         <br><br>
-        <a href="/">Back Home</a>
+        <a href="/">返回登入頁面</a>
      </body>
 </html>
