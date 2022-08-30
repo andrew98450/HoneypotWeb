@@ -60,13 +60,16 @@ def logout():
 @app.route("/event", methods=['GET'])
 @login_required
 def event():
-    pass
+    
+    return render_template('event.html')
+
 
 @app.route("/sysinfo", methods=['GET'])
 @login_required
 def sysinfo():
     info_ref = ref.child('info')
     info_data = info_ref.get()
+    return render_template('sysinfo.html')
 
 @app.route("/api", methods=['GET', 'POST'])
 @login_required
@@ -132,6 +135,7 @@ def api():
 @login_required
 def blacklist():
     blacklist_ref = ref.child("blacklist")
+    return render_template('blacklist.html')
 
 @app.route("/add_blacklist/<ip>", methods=['POST'])
 def add_blacklist(ip):
