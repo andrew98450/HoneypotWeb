@@ -1,3 +1,4 @@
+from crypt import methods
 import os
 import pyotp
 import json
@@ -12,7 +13,7 @@ from flask import *
 from flask_login import *
 from flask_qrcode import *
 from turbo_flask import *
-from threading import Thread
+from threading import Timer
 from firebase_admin import credentials
 from firebase_admin import db
 
@@ -30,12 +31,21 @@ user = UserMixin()
 login.login_view = 'login'
 user.id = ''
 
+def update_sysinfo():
+    with app.app_context():
+        while True:
+            info_ref = ref.child("info")
+            info_json = info_ref.get()
+            turbo.push(
+                turbo.update(render_template("update_sysinfo.html", data=info_json), "sys"))
+            time.sleep(1)
+
 def update_top_info():
     with app.app_context():
         while True:
             turbo.push(
-                turbo.update(render_template("top_log.html", log=random.randint(1, 100)), "top_log"))
-            time.sleep(5)
+                turbo.update(render_template("update_manager.html", log=random.randint(1, 100)), "top_log"))
+            time.sleep(1)
 
 @login.user_loader
 def user_loader(username):
@@ -60,16 +70,14 @@ def logout():
 @app.route("/event", methods=['GET'])
 @login_required
 def event():
-    
-    return render_template('event.html')
-
+    pass
 
 @app.route("/sysinfo", methods=['GET'])
 @login_required
 def sysinfo():
-    info_ref = ref.child('info')
-    info_data = info_ref.get()
-    return render_template('sysinfo.html')
+    timer =  Timer(interval=5, function=update_sysinfo)
+    timer.start()
+    return render_template("sysinfo.html")
 
 @app.route("/api", methods=['GET', 'POST'])
 @login_required
@@ -135,7 +143,6 @@ def api():
 @login_required
 def blacklist():
     blacklist_ref = ref.child("blacklist")
-    return render_template('blacklist.html')
 
 @app.route("/add_blacklist/<ip>", methods=['POST'])
 def add_blacklist(ip):
@@ -259,6 +266,44 @@ def get_blacklist():
     except:
         return {"status": "API Key verify Error."}
 
+@app.route("/get_sysinfo", methods=['GET'])
+def get_sysinfo():
+    info_ref = ref.child("info")
+    user_ref = ref.child("user_info")
+    info_data = info_ref.get()
+    user_info = user_ref.get()
+
+    if 'token' not in request.form.keys() or 'password' not in request.form.keys():
+        return {"status": "Please input field."}
+
+    token = str(request.form['token'])
+    password = str(request.form['password'])
+
+    try:  
+        key = JWK.from_password(pad(password.encode(), 32).decode())
+        jwt = JWT()
+        jwt.deserialize(token, key)
+        username = json.loads(jwt.claims)['data']
+
+        if user_info is None:
+            return {"status": "Data is Empty."}
+        
+        if not user_info[username]['has_token']:
+            return {"status": "REST API not enable."}
+
+        if username in user_info.keys():
+            if token == user_info[username]['token']:
+                if info_data is not None:
+                    return {"status": "Success.", "data": info_data}
+                else:
+                    return {"status": "The data is empty."}
+            else:
+                return {"status": "Token expired."}
+        else:
+            return {"status": "Username is not exist."}
+    except:
+        return {"status": "API Key verify Error."}
+
 @app.route("/register", methods=['GET', 'POST'])
 def register():
 
@@ -309,7 +354,7 @@ def register():
 @app.route("/manager", methods=['GET'])
 @login_required
 def manager():
-    thread = Thread(target=update_top_info)
+    thread = Timer(interval=5, function=update_top_info)
     thread.start()
     return render_template("manager.html")
 
