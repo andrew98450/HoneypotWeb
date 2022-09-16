@@ -1,0 +1,41 @@
+<html>
+    <body style="text-align:center;">
+        攻擊事件數: {{ event_n }} 
+        <p>
+            前三名攻擊事件:
+        </p>  
+        <table align="center" border=1>
+            <tr>
+                {% for i in top_n %}
+                    <th>{{ i }}</th>
+                {% endfor %}
+            </tr>
+            <tr>
+                {% for event, count in top_classes %}
+                    <th>{{ event }}: {{ count }}</th>
+                {% endfor %}
+            </tr>
+        </table>
+        {% for timestamp in event_json %}
+        <p>
+           {% if event_json[timestamp].event_type == "PORT Scan" %} 
+                [ {{ event_json[timestamp].event_type }} {{ event_json[timestamp].scan_type }} ]
+                Protocol: 
+                    {{ event_json[timestamp].protocol }}
+                Src_Address:
+                    {{  event_json[timestamp].src_ip }} 
+                Target_Port: 
+                    {{  event_json[timestamp].port }}
+           {% else %}
+                [ {{ event_json[timestamp].event_type }} ]
+                Protocol: 
+                    {{ event_json[timestamp].protocol }}
+                Src_Address:
+                    {{  event_json[timestamp].src_ip }} 
+                Target_Port: 
+                    {{  event_json[timestamp].port }}
+           {% endif %}
+        </p>
+        {% endfor %}
+    </body>
+</html>

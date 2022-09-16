@@ -1,12 +1,23 @@
 <html>
     <head>
         <title>
-
+            Honeypot Web BlackList
         </title>
     </head>
     <body style="text-align:center;">
+        <h1>Honeypot Web 黑名單管理</h1>
+        <form method="post">
+            IP: <input type="text" name="ip_address">
+            <input type="submit" value="新增">
+        </form>
+        <span>{{ message }}</span>
+        {% for ip_address in blacklist_json %}
+            <p>
+                {{ ip_address }} 管理者: {{ blacklist_json[ip_address].add_account }}
+                <a href="/delete_event/{{ ip_address }}"><button>刪除</button></a>
+            </p>
+        {% endfor %}
         
-        <br><br>
-        <a href="/manager">返回管理頁面</a>
+        <p><a href="/manager">返回管理頁面</a></p>
     </body>
 </html>

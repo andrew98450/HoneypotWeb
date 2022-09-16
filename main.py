@@ -5,6 +5,7 @@ import firebase_admin
 import random
 import hashlib
 import time
+from collections import Counter, defaultdict
 from jwcrypto.jwt import JWT
 from jwcrypto.jwk import JWK
 from Crypto.Util.Padding import pad
@@ -30,20 +31,83 @@ user = UserMixin()
 login.login_view = 'login'
 user.id = ''
 
+def event_top_classes(event_json):
+    count = Counter(defaultdict(lambda : 0))
+    for timestamp in event_json.keys():
+        if "ShellCode" in event_json[timestamp]['event_type']:
+            count["ShellCode"] += 1
+        elif "PORT Scan" in event_json[timestamp]['event_type']:
+            if "XMAS" in event_json[timestamp]['scan_type']:
+                count["PORT Scan XMAS"] += 1
+            if "NULL" in event_json[timestamp]['scan_type']:
+                count["PORT Scan NULL"] += 1
+            if "FIN" in event_json[timestamp]['scan_type']:
+                count["PORT Scan FIN"] += 1
+        elif "Syn Flood" in event_json[timestamp]['event_type']:
+            count["Syn Flood"] += 1
+        elif "DNS Fuzz" in event_json[timestamp]['event_type']:
+            count["DNS Fuzz"] += 1
+    top_most = count.most_common(3)
+    return top_most
+
+def protocol_classes(connect_json):
+    tcp_count, udp_count = 0, 0
+    for timestamp in connect_json.keys():
+        if "TCP" in connect_json[timestamp]['l3_protocol']:
+            tcp_count += 1
+        elif "UDP" in connect_json[timestamp]['l3_protocol']:
+            udp_count += 1
+    return tcp_count, udp_count
+
 def update_sysinfo():
     with app.app_context():
         while True:
             info_ref = ref.child("info")
             info_json = info_ref.get()
             turbo.push(
-                turbo.update(render_template("update_sysinfo.html", data=info_json), "sys"))
+                turbo.update(render_template(
+                    "update_sysinfo.html", data=info_json), "sysinfo"))
             time.sleep(1)
 
-def update_top_info():
+def update_live_event():
     with app.app_context():
         while True:
+            event_ref = ref.child("event")
+            event_json = event_ref.get()
+            if event_json is None:
+                event_n = 0
+                event_json = dict()
+            else:
+                event_n = len(event_json)
+            top_classes = event_top_classes(event_json)
+            top_n = len(top_classes)
             turbo.push(
-                turbo.update(render_template("update_manager.html", log=random.randint(1, 100)), "top_log"))
+                turbo.update(render_template(
+                    "update_event.html",
+                    event_n=event_n, 
+                    event_json=event_json,
+                    top_n = range(1, top_n + 1),
+                    top_classes=top_classes), "live_event"))
+            time.sleep(1)
+
+def update_live_connect():
+    with app.app_context():
+        while True:
+            connect_ref = ref.child("connect_info")
+            connect_json = connect_ref.get()
+            if connect_json is None:
+                connect_n = 0
+                connect_json = dict()
+            else:
+                connect_n = len(connect_json)
+            tcp_n, udp_n = protocol_classes(connect_json)
+            turbo.push(
+                turbo.update(render_template(
+                    "update_connect.html",
+                    connect_n=connect_n, 
+                    connect_json=connect_json,
+                    tcp_n=tcp_n,
+                    udp_n=udp_n), "live_connect"))
             time.sleep(1)
 
 @login.user_loader
@@ -66,17 +130,26 @@ def logout():
     user.id = ''
     return redirect('/')
 
-@app.route("/event", methods=['GET'])
-@login_required
-def event():
-    pass
-
 @app.route("/sysinfo", methods=['GET'])
 @login_required
 def sysinfo():
-    timer =  Timer(interval=5, function=update_sysinfo)
+    timer =  Timer(interval=1, function=update_sysinfo)
     timer.start()
     return render_template("sysinfo.html")
+
+@app.route("/connectinfo", methods=['GET'])
+@login_required
+def connectinfo():
+    timer =  Timer(interval=1, function=update_live_connect)
+    timer.start()
+    return render_template("connect.html")
+
+@app.route("/event", methods=['GET'])
+@login_required
+def event():
+    timer =  Timer(interval=1, function=update_live_event)
+    timer.start()
+    return render_template("event.html")
 
 @app.route("/api", methods=['GET', 'POST'])
 @login_required
@@ -138,10 +211,34 @@ def api():
     else:
         return render_template('api.html', has_token=has_token)
 
+@app.route("/delete_event/<ip_address>", methods=["GET"])
+@login_required
+def delete_event(ip_address):
+    blacklist_ref = ref.child("blacklist")
+    blacklist_json = blacklist_ref.get()
+    if ip_address in blacklist_json.keys():
+        blacklist_ref.child(ip_address).delete()
+        return redirect("/blacklist")
+
 @app.route("/blacklist", methods=['GET', 'POST'])
 @login_required
 def blacklist():
     blacklist_ref = ref.child("blacklist")
+    blacklist_json = blacklist_ref.get()
+    
+    if blacklist_json is None:
+        blacklist_json = dict()
+
+    if request.method == "POST":
+        ip = request.form["ip_address"]
+        if ip.replace(".", "-") not in blacklist_json.keys():
+            blacklist_ref.child(ip.replace(".", "-")).update({"add_account": user.get_id()})
+            blacklist_json = blacklist_ref.get()
+            return Response(render_template("blacklist.html", blacklist_json=blacklist_json, message="Success."), 302)
+        else:
+            return Response(render_template("blacklist.html", blacklist_json=blacklist_json, message="This IP has add blacklist."), 302)
+
+    return render_template("blacklist.html", blacklist_json=blacklist_json)
 
 @app.route("/add_blacklist/<ip>", methods=['POST'])
 def add_blacklist(ip):
@@ -265,7 +362,7 @@ def get_blacklist():
     except:
         return {"status": "API Key verify Error."}
 
-@app.route("/get_sysinfo", methods=['GET'])
+@app.route("/get_sysinfo", methods=['POST'])
 def get_sysinfo():
     info_ref = ref.child("info")
     user_ref = ref.child("user_info")
@@ -353,8 +450,6 @@ def register():
 @app.route("/manager", methods=['GET'])
 @login_required
 def manager():
-    thread = Timer(interval=5, function=update_top_info)
-    thread.start()
     return render_template("manager.html")
 
 @app.route("/delete_account", methods=['GET', 'POST'])

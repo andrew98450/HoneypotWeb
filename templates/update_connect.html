@@ -1,0 +1,10 @@
+<html>
+    <body style="text-align:center ;">
+        封包數: {{ connect_n }} TCP: {{ tcp_n }} UDP: {{ udp_n }}
+        {% for timestamp in connect_json %}
+            <p>
+                [ {{ connect_json[timestamp].protocol }} ] {{ connect_json[timestamp].src_address }}:{{ connect_json[timestamp].src_port }} -> 
+                {{ connect_json[timestamp].dst_address }}:{{ connect_json[timestamp].dst_port }} </p>
+        {% endfor %}
+    </body>
+</html>
