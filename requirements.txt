@@ -5,6 +5,6 @@ turbo-flask
 pyotp
 werkzeug==2.1.2
 firebase-admin
-jwcrypto
+jwcrypto==1.4
 cryptography
 pycryptodome
