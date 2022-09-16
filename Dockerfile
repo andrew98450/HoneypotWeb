@@ -1,4 +1,4 @@
-FROM python:3.9.13-slim-buster AS python
+FROM python:3.9.13-slim AS python
 
 COPY . ./
 
