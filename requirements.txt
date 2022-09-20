@@ -1,5 +1,10 @@
-python-telegram-bot
-tflite-runtime==2.10.0
-numpy
-Flask
-matplotlib
+flask
+flask-login
+Flask-QRcode
+turbo-flask
+pyotp
+werkzeug==2.1.2
+firebase-admin
+jwcrypto==1.3.1
+cryptography
+pycryptodome
