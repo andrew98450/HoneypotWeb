@@ -33,6 +33,8 @@ user.id = ''
 
 def event_top_classes(event_json):
     count = Counter(defaultdict(lambda : 0))
+    if event_json is None:
+        return count
     for timestamp in event_json.keys():
         if "ShellCode" in event_json[timestamp]['event_type']:
             count["ShellCode"] += 1
@@ -429,6 +431,45 @@ def get_logger():
             if token == user_info[username]['token']:
                 if connect_data is not None:
                     return {"status": "Success.", "data": connect_data}
+                else:
+                    return {"status": "The data is empty."}
+            else:
+                return {"status": "Token expired."}
+        else:
+            return {"status": "Username is not exist."}
+    except:
+        return {"status": "API Key verify Error."}
+
+@app.route("/get_top3_event", methods=['POST'])
+def get_top3_event():
+    event_ref = ref.child("event")
+    user_ref = ref.child("user_info")
+    event_json = event_ref.get()
+    event_top3 = event_top_classes(event_json)
+    user_info = user_ref.get()
+
+    if 'token' not in request.form.keys() or 'password' not in request.form.keys():
+        return {"status": "Please input field."}
+
+    token = str(request.form['token'])
+    password = str(request.form['password'])
+
+    try:  
+        key = JWK.from_password(pad(password.encode(), 32).decode())
+        jwt = JWT()
+        jwt.deserialize(token, key)
+        username = json.loads(jwt.claims)['data']
+
+        if user_info is None:
+            return {"status": "Data is Empty."}
+        
+        if not user_info[username]['has_token']:
+            return {"status": "REST API not enable."}
+
+        if username in user_info.keys():
+            if token == user_info[username]['token']:
+                if event_top3 is not None:
+                    return {"status": "Success.", "data": event_top3}
                 else:
                     return {"status": "The data is empty."}
             else:
