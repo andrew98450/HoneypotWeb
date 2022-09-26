@@ -1,7 +1,7 @@
 flask
 flask-login
 Flask-QRcode
-turbo-flask
+turbo-flask==0.8.0
 pyotp
 werkzeug==2.1.2
 firebase-admin
