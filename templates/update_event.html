@@ -20,6 +20,8 @@
         <p>
            {% if event_json[timestamp].event_type == "PORT Scan" %} 
                 [ {{ event_json[timestamp].event_type }} {{ event_json[timestamp].scan_type }} ]
+                Time:
+                    {{ timestamp }}
                 Protocol: 
                     {{ event_json[timestamp].protocol }}
                 Src_Address:
@@ -28,6 +30,8 @@
                     {{  event_json[timestamp].port }}
            {% else %}
                 [ {{ event_json[timestamp].event_type }} ]
+                Time:
+                    {{ timestamp }}
                 Protocol: 
                     {{ event_json[timestamp].protocol }}
                 Src_Address:
