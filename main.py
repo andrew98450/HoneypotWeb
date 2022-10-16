@@ -135,21 +135,21 @@ def logout():
 @app.route("/sysinfo", methods=['GET'])
 @login_required
 def sysinfo():
-    timer = Timer(interval=2, function=update_sysinfo)
+    timer = Timer(interval=1, function=update_sysinfo)
     timer.start()
     return render_template("sysinfo.html")
 
 @app.route("/connectinfo", methods=['GET'])
 @login_required
 def connectinfo():
-    timer = Timer(interval=2, function=update_live_connect)
+    timer = Timer(interval=1, function=update_live_connect)
     timer.start()
     return render_template("connect.html")
 
 @app.route("/event", methods=['GET'])
 @login_required
 def event():
-    timer = Timer(interval=2, function=update_live_event)
+    timer = Timer(interval=1, function=update_live_event)
     timer.start()
     return render_template("event.html")
 
