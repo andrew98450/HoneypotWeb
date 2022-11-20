@@ -536,7 +536,9 @@ def manager():
 def detete_account():
     if request.method == 'POST':
         user_ref = ref.child("user_info").child(str(user.get_id()))
+        blacklist_ref = ref.child("blacklist")
         user_info = user_ref.get()
+        blacklist_info = blacklist_ref.get()
 
         password = request.form['password']
         current_hash_password = hashlib.sha256(password.encode()).hexdigest()
@@ -554,6 +556,11 @@ def detete_account():
             verify = totp.verify(otpcode)
             if verify:
                 user_ref.delete()
+                if blacklist_info is not None:
+                    for ip_address in blacklist_info.keys():
+                        if user.get_id() == blacklist_info[ip_address]['add_account']:
+                            ip_ref = blacklist_ref.child(ip_address)
+                            ip_ref.delete()
                 logout_user()
                 user.id = ''
                 return redirect('/')
