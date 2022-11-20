@@ -12,12 +12,18 @@
         </form>
         <span>{{ message }}</span>
         {% for ip_address in blacklist_json %}
+            {% if username == blacklist_json[ip_address].add_account %}
             <p>
                 {{ ip_address }} 管理者: {{ blacklist_json[ip_address].add_account }}
                 <a href="/delete_event/{{ ip_address }}"><button>刪除</button></a>
             </p>
+            {% else %}
+            <p>
+                {{ ip_address }} 管理者: {{ blacklist_json[ip_address].add_account }}
+                <a href="/delete_event/{{ ip_address }}"><button disabled>刪除</button></a>
+            </p>
+            {% endif %}
         {% endfor %}
-        
         <p><a href="/manager">返回管理頁面</a></p>
     </body>
 </html>

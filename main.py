@@ -236,11 +236,11 @@ def blacklist():
         if ip.replace(".", "-") not in blacklist_json.keys():
             blacklist_ref.child(ip.replace(".", "-")).update({"add_account": user.get_id()})
             blacklist_json = blacklist_ref.get()
-            return Response(render_template("blacklist.html", blacklist_json=blacklist_json, message="Success."), 302)
+            return Response(render_template("blacklist.html", blacklist_json=blacklist_json, username=user.get_id(), message="Success."), 302)
         else:
-            return Response(render_template("blacklist.html", blacklist_json=blacklist_json, message="This IP has add blacklist."), 302)
+            return Response(render_template("blacklist.html", blacklist_json=blacklist_json, username=user.get_id(), message="This IP has add blacklist."), 302)
 
-    return render_template("blacklist.html", blacklist_json=blacklist_json)
+    return render_template("blacklist.html", blacklist_json=blacklist_json, username=user.get_id())
 
 @app.route("/add_blacklist/<ip>", methods=['POST'])
 def add_blacklist(ip):
@@ -249,11 +249,11 @@ def add_blacklist(ip):
     user_info = user_ref.get()
     ip = str(ip).replace('.', '-')
     
-    if 'token' not in request.form.keys() or 'password' not in request.form.keys():
+    if 'token' not in request.values.keys() or 'password' not in request.values.keys():
         return {"status": "Please input field."}
 
-    token = str(request.form['token'])
-    password = str(request.form['password'])
+    token = str(request.values['token'])
+    password = str(request.values['password'])
 
     try:
         key = JWK.from_password(pad(password.encode(), 32).decode())
@@ -291,11 +291,11 @@ def delete_blacklist(ip):
     user_info = user_ref.get()
     ip = str(ip).replace('.', '-')
 
-    if 'token' not in request.form.keys() or 'password' not in request.form.keys():
+    if 'token' not in request.values.keys() or 'password' not in request.values.keys():
         return {"status": "Please input field."}
 
-    token = str(request.form['token'])
-    password = str(request.form['password'])
+    token = str(request.values['token'])
+    password = str(request.values['password'])
 
     try:
         key = JWK.from_password(pad(password.encode(), 32).decode())
@@ -333,11 +333,11 @@ def get_blacklist():
     blacklist_info = blacklist_ref.get()
     user_info = user_ref.get()
 
-    if 'token' not in request.form.keys() or 'password' not in request.form.keys():
+    if 'token' not in request.values.keys() or 'password' not in request.values.keys():
         return {"status": "Please input field."}
 
-    token = str(request.form['token'])
-    password = str(request.form['password'])
+    token = str(request.values['token'])
+    password = str(request.values['password'])
 
     try:  
         key = JWK.from_password(pad(password.encode(), 32).decode())
@@ -371,11 +371,11 @@ def get_sysinfo():
     info_data = info_ref.get()
     user_info = user_ref.get()
 
-    if 'token' not in request.form.keys() or 'password' not in request.form.keys():
+    if 'token' not in request.values.keys() or 'password' not in request.values.keys():
         return {"status": "Please input field."}
 
-    token = str(request.form['token'])
-    password = str(request.form['password'])
+    token = str(request.values['token'])
+    password = str(request.values['password'])
 
     try:  
         key = JWK.from_password(pad(password.encode(), 32).decode())
@@ -409,11 +409,11 @@ def get_logger():
     connect_data = connect_ref.get()
     user_info = user_ref.get()
 
-    if 'token' not in request.form.keys() or 'password' not in request.form.keys():
+    if 'token' not in request.values.keys() or 'password' not in request.values.keys():
         return {"status": "Please input field."}
 
-    token = str(request.form['token'])
-    password = str(request.form['password'])
+    token = str(request.values['token'])
+    password = str(request.values['password'])
 
     try:  
         key = JWK.from_password(pad(password.encode(), 32).decode())
@@ -448,11 +448,11 @@ def get_top3_event():
     event_top3 = event_top_classes(event_json)
     user_info = user_ref.get()
 
-    if 'token' not in request.form.keys() or 'password' not in request.form.keys():
+    if 'token' not in request.values.keys() or 'password' not in request.values.keys():
         return {"status": "Please input field."}
 
-    token = str(request.form['token'])
-    password = str(request.form['password'])
+    token = str(request.values['token'])
+    password = str(request.values['password'])
 
     try:  
         key = JWK.from_password(pad(password.encode(), 32).decode())
